@@ -184,6 +184,7 @@
 
                         <!-- 提示信息 -->
                         <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
+                            <!-- 你可以修改这里的提示文字 -->
                             请在预约时间前10-15分钟到6号楼2楼风湿免疫科报道
                         </div>
 
@@ -249,20 +250,6 @@
                     </div>
                     <div id="appointments-list" class="space-y-3">
                         <!-- 预约项将在这里动态插入 -->
-                        <!-- 示例:
-                        <div class="appointment-item border-l-4 border-blue-500 bg-gray-50 p-4 rounded-r-md">
-                            <div class="flex justify-between items-center">
-                                <span class="name text-lg font-semibold text-gray-800">张三</span>
-                                <span class="text-sm font-medium text-blue-600">15:00-15:30</span>
-                            </div>
-                            <div class="details text-gray-600 mt-1">
-                                <span>13800138000</span> | <span>2025-11-19</span>
-                            </div>
-                        </div>
-                        <div class="appointment-item is-past border-l-4 p-4 rounded-r-md">
-                            ...
-                        </div>
-                        -->
                     </div>
                     <div id="empty-state" class="text-center text-gray-500 py-10 hidden">
                         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -281,70 +268,45 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh.js"></script>
 
-    <!-- 导入 v9 compat 脚本 (新) -->
+    <!-- 导入 v9 compat 脚本 -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <script>
-        // 移除了 v11 SDK "type=module" 导入
-        /*
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { 
-            getAuth, 
-            signInAnonymously, 
-            signInWithCustomToken, 
-            onAuthStateChanged 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { 
-            getFirestore, 
-            collection, 
-            addDoc, 
-            query, 
-            where, 
-            getDocs, 
-            onSnapshot,
-            doc,
-            setLogLevel
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        */
-
         // --------------------------------------------------
         // 1. Firebase 配置和初始化
         // --------------------------------------------------
 
-        // 使用你提供的 Firebase 配置
-        const userFirebaseConfig = {
-            apiKey: "AIzaSyCSdlJhcm9-X8G9ylC3QIUg1IC7IJ3urJ0",
-            authDomain: "ss-cxhj-f5e10.firebaseapp.com",
-            projectId: "ss-cxhj-f5e10",
-            storageBucket: "ss-cxhj-f5e10.firebasestorage.app",
-            messagingSenderId: "943812071913",
-            appId: "1:943812071913:web:95d80e3849ab09730dfb78",
-            measurementId: "G-2EEWHYF5YH"
-        };
-        
-        // 从环境中获取 Firebase 配置，如果不存在则使用你提供的配置
+        // 从环境中获取 Firebase 配置
+        // 这个脚本会自动从运行环境中读取 __firebase_config 变量
         const firebaseConfig = typeof __firebase_config !== 'undefined' 
             ? JSON.parse(__firebase_config) 
-            : userFirebaseConfig;
-
-        // 从环境中获取 App ID (移除)
-        // const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            : {
+                // 这是一个备用配置，以防环境配置未加载
+                // 请确保你的环境配置 (如 __firebase_config) 已正确注入
+                apiKey: "YOUR_FALLBACK_API_KEY",
+                authDomain: "YOUR_FALLBACK_AUTH_DOMAIN",
+                projectId: "YOUR_FALLBACK_PROJECT_ID",
+                storageBucket: "YOUR_FALLBACK_STORAGE_BUCKET",
+                messagingSenderId: "YOUR_FALLBACK_MESSAGING_SENDER_ID",
+                appId: "YOUR_FALLBACK_APP_ID"
+            };
 
         // 初始化 Firebase (v9 compat 样式)
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        // 移除了 v11 modular 的 app, auth, 和 setLogLevel
-        // const app = initializeApp(firebaseConfig);
-        // const auth = getAuth(app);
-        // const db = getFirestore(app);
-        // setLogLevel('Debug'); 
+        let db;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+        } catch (e) {
+            console.error("Firebase 初始化失败: ", e);
+            document.body.innerHTML = `<div class="p-4 text-center text-red-600 bg-red-100">Firebase 初始化失败。请检查控制台中的错误信息和你的 Firebase 配置。</div>`;
+        }
 
-        // 定义 Firestore 集合路径 (!! 关键修复 !!)
-        // const collectionPath = `artifacts/${appId}/public/data/registrations`; // 移除
-        const registrationsCol = db.collection("registrations"); // v9 样式, 匹配 index.txt
 
-        // let userId = null; // 移除了 auth
+        // 定义 Firestore 集合
+        // 这个应用将使用一个名为 "registrations" 的顶级集合
+        const registrationsCol = db.collection("registrations");
+
         let globalRegistrations = []; // 存储所有预约
         let unsubscribeFromRegistrations = null; // 用于取消实时监听
 
@@ -435,10 +397,8 @@
             
             try {
                 // 1. 查询 Firebase 中该日期的所有预约 (v9 style)
-                // const q = query(registrationsCol, where("date", "==", selectedDate)); // v11
-                // const querySnapshot = await getDocs(q); // v11
-                const q = registrationsCol.where("date", "==", selectedDate); // v9
-                const querySnapshot = await q.get(); // v9
+                const q = registrationsCol.where("date", "==", selectedDate);
+                const querySnapshot = await q.get();
                 
                 const bookedTimes = new Set();
                 querySnapshot.forEach(doc => {
@@ -476,12 +436,6 @@
          */
         async function handleRegistrationSubmit(e) {
             e.preventDefault();
-            /* 移除了 auth 检查
-            if (!userId) {
-                showMessage("尚未登录，请稍候...", true);
-                return;
-            }
-            */
 
             submitBtn.disabled = true;
             submitBtn.textContent = "提交中...";
@@ -501,10 +455,8 @@
 
             try {
                 // **关键：再次检查该时间段是否刚被预约** (v9 style)
-                // const q = query(registrationsCol, where("date", "==", date), where("time", "==", time)); // v11
-                // const checkSnapshot = await getDocs(q); // v11
-                const q = registrationsCol.where("date", "==", date).where("time", "==", time); // v9
-                const checkSnapshot = await q.get(); // v9
+                const q = registrationsCol.where("date", "==", date).where("time", "==", time);
+                const checkSnapshot = await q.get();
                 
                 if (!checkSnapshot.empty) {
                     // 在提交的瞬间被别人抢先了
@@ -512,14 +464,12 @@
                     await updateAvailableTimeSlots(date); // 刷新时间段
                 } else {
                     // 可以安全添加 (v9 style)
-                    // await addDoc(registrationsCol, { // v11
-                    await registrationsCol.add({ // v9
+                    await registrationsCol.add({
                         name: name,
                         phone: phone,
                         date: date,
                         time: time,
                         createdAt: new Date(),
-                        // userId: userId // 移除了 auth
                     });
                     
                     showMessage("预约成功！", false);
@@ -628,8 +578,7 @@
             }
 
             // 开启新的实时监听 (v9 style)
-            // unsubscribeFromRegistrations = onSnapshot(registrationsCol, (querySnapshot) => { // v11
-            unsubscribeFromRegistrations = registrationsCol.onSnapshot((querySnapshot) => { // v9
+            unsubscribeFromRegistrations = registrationsCol.onSnapshot((querySnapshot) => {
                 globalRegistrations = [];
                 querySnapshot.forEach((doc) => {
                     globalRegistrations.push({ id: doc.id, ...doc.data() });
@@ -668,68 +617,42 @@
             }
         }
 
-        /**
-         * Firebase 认证 (已移除)
-         */
-        /*
-        async function initializeAuth() {
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    console.log("认证成功, User ID:", user.uid);
-                    userId = user.uid;
-                    // 认证成功后，才开始监听数据
-                    setupRegistrationListener();
-                } else {
-                    console.log("用户未登录");
-                    userId = null;
-                    if (unsubscribeFromRegistrations) {
-                        unsubscribeFromRegistrations();
-                    }
-                }
-            });
-
-            try {
-                // 检查 __initial_auth_token 是否存在
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    console.log("使用 Custom Token 登录...");
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    console.log("使用匿名方式登录...");
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Firebase 登录失败:", error);
-                document.body.innerHTML = `<div class="text-center p-10 text-red-600">Firebase认证失败，应用无法启动。</div>`;
-            }
-        }
-        */
-
         // --------------------------------------------------
         // 7. 启动应用
         // --------------------------------------------------
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. 初始化 Firebase 认证 (移除)
-            // initializeAuth();
-            
-            // 1. (新) 直接开始监听数据
+            // 确保 Firebase 已成功初始化
+            if (!db) {
+                console.warn("Firestore 'db' 尚未初始化。应用可能无法正常工作。");
+                return;
+            }
+
+            // 1. 开始监听数据
             setupRegistrationListener();
 
             // 2. 初始化日期选择器
-            const registerPicker = flatpickr(registerDateInput, {
-                ...wednesdayOnlyConfig,
-                onChange: function(selectedDates, dateStr, instance) {
-                    // 当日期变化时，更新可用时间段
-                    updateAvailableTimeSlots(dateStr);
-                }
-            });
+            let registerPicker;
+            try {
+                 registerPicker = flatpickr(registerDateInput, {
+                    ...wednesdayOnlyConfig,
+                    onChange: function(selectedDates, dateStr, instance) {
+                        // 当日期变化时，更新可用时间段
+                        updateAvailableTimeSlots(dateStr);
+                    }
+                });
+            } catch(e) { console.error("注册日期选择器初始化失败:", e); }
             
-            const filterPicker = flatpickr(filterDateInput, {
-                ...wednesdayOnlyConfig,
-                onChange: function(selectedDates, dateStr, instance) {
-                    // 当筛选日期变化时，重新渲染列表
-                    renderRegistrations();
-                }
-            });
+            let filterPicker;
+            try {
+                filterPicker = flatpickr(filterDateInput, {
+                    ...wednesdayOnlyConfig,
+                    onChange: function(selectedDates, dateStr, instance) {
+                        // 当筛选日期变化时，重新渲染列表
+                        renderRegistrations();
+                    }
+                });
+            } catch(e) { console.error("筛选日期选择器初始化失败:", e); }
+
 
             // 3. 绑定标签页切换事件
             tabRegister.addEventListener('click', () => switchTab('register'));
@@ -740,7 +663,9 @@
 
             // 5. 绑定查看全部按钮事件
             viewAllBtn.addEventListener('click', () => {
-                filterPicker.clear(); // 清空日期选择器
+                if (filterPicker) {
+                    filterPicker.clear(); // 清空日期选择器
+                }
                 renderRegistrations(); // 重新渲染（无筛选）
             });
         });
