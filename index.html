@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线预约登记</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入flatpickr日期选择器CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <!-- 引入Inter字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* 自定义样式以实现Apple简约风格 */
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+            background-color: #f3f4f6; /* 浅灰色背景 */
+        }
+
+        /* 标签页激活状态 */
+        .tab-active {
+            border-bottom-color: #007aff; /* Apple 蓝色 */
+            color: #007aff;
+            font-weight: 600;
+        }
+
+        /* 表单输入框 */
+        .form-input {
+            appearance: none;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem; /* 圆角 */
+            padding: 0.75rem 1rem;
+            width: 100%;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #007aff;
+            box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+        }
+
+        /* 主按钮 */
+        .btn-primary {
+            background-color: #007aff;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            text-align: center;
+            transition: background-color 0.2s;
+            width: 100%;
+        }
+        .btn-primary:hover {
+            background-color: #005bb5;
+        }
+        .btn-primary:disabled {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+        }
+
+        /* 次要按钮 */
+        .btn-secondary {
+            background-color: #e5e7eb;
+            color: #1f2937;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            text-align: center;
+            transition: background-color 0.2s;
+        }
+        .btn-secondary:hover {
+            background-color: #d1d5db;
+        }
+
+        /* 卡片样式 */
+        .card {
+            background-color: white;
+            border-radius: 0.75rem; /* 更圆的角 */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+        }
+
+        /* 时间段单选框样式 */
+        .time-slot {
+            display: block;
+            position: relative;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+        .time-slot input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .time-slot span {
+            display: block;
+        }
+        /* 选中时的样式 */
+        .time-slot input:checked + span {
+            border-color: #007aff;
+            background-color: #f0f7ff;
+            color: #007aff;
+            font-weight: 600;
+        }
+        /* 禁用时的样式 */
+        .time-slot input:disabled + span {
+            background-color: #f9fafb;
+            color: #9ca3af;
+            cursor: not-allowed;
+            text-decoration: line-through;
+        }
+        .time-slot input:not(:disabled) + span:hover {
+            border-color: #a0aec0;
+        }
+
+        /* flatpickr 日期选择器自定义 */
+        .flatpickr-day.selected {
+            background: #007aff;
+            border-color: #007aff;
+        }
+        .flatpickr-day.today {
+            border-color: #007aff;
+        }
+        .flatpickr-day.today:not(.selected) {
+            color: #007aff;
+        }
+        .flatpickr-day.disabled, .flatpickr-day.flatpickr-disabled, .flatpickr-day.prevMonthDay, .flatpickr-day.nextMonthDay {
+            color: rgba(55, 65, 81, 0.3);
+        }
+
+        /* 预约列表项 */
+        .appointment-item.is-past {
+            background-color: #f9fafb; /* 过去的预约用更浅的背景 */
+            border-left-color: #9ca3af; /* 灰色左边框 */
+        }
+        .appointment-item.is-past .name, .appointment-item.is-past .details {
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto max-w-lg p-4 min-h-screen">
+        
+        <!-- 头部 -->
+        <header class="text-center my-6">
+            <h1 class="text-3xl font-bold text-gray-900">在线预约</h1>
+        </header>
+
+        <!-- 标签页导航 -->
+        <nav class="flex border-b border-gray-200 mb-6">
+            <button id="tab-register" class="flex-1 py-3 text-center text-gray-500 border-b-2 border-transparent tab-active">
+                登记预约
+            </button>
+            <button id="tab-view" class="flex-1 py-3 text-center text-gray-500 border-b-2 border-transparent">
+                查看预约
+            </button>
+        </nav>
+
+        <!-- 页面内容 -->
+        <main>
+            <!-- 登记页面 -->
+            <div id="page-register">
+                <div class="card space-y-5">
+                    <form id="register-form" class="space-y-4">
+                        <!-- 姓名 -->
+                        <div>
+                            <label for="name" class="block text-sm font-medium text-gray-700 mb-1">姓名</label>
+                            <input type="text" id="name" class="form-input" placeholder="请输入您的姓名" required>
+                        </div>
+
+                        <!-- 电话 -->
+                        <div>
+                            <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">电话</label>
+                            <input type="tel" id="phone" class="form-input" placeholder="请输入您的联系电话" required>
+                        </div>
+
+                        <!-- 提示信息 -->
+                        <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
+                            请在预约时间前10-15分钟到6号楼2楼风湿免疫科报道
+                        </div>
+
+                        <!-- 预约日期 -->
+                        <div>
+                            <label for="register-date" class="block text-sm font-medium text-gray-700 mb-1">预约日期 (仅限周三)</label>
+                            <input type="text" id="register-date" class="form-input bg-white" placeholder="请选择一个周三" required>
+                        </div>
+
+                        <!-- 预约时间段 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">预约时间段</label>
+                            <div id="time-slots-container" class="grid grid-cols-2 gap-3">
+                                <label class="time-slot">
+                                    <input type="radio" name="time" value="15:00-15:30" required>
+                                    <span class="block text-center rounded-md border border-gray-300 py-3">15:00-15:30</span>
+                                </label>
+                                <label class="time-slot">
+                                    <input type="radio" name="time" value="15:30-16:00" required>
+                                    <span class="block text-center rounded-md border border-gray-300 py-3">15:30-16:00</span>
+                                </label>
+                                <label class="time-slot">
+                                    <input type="radio" name="time" value="16:00-16:30" required>
+                                    <span class="block text-center rounded-md border border-gray-300 py-3">16:00-16:30</span>
+                                </label>
+                                <label class="time-slot">
+                                    <input type="radio" name="time" value="16:30-17:00" required>
+                                    <span class="block text-center rounded-md border border-gray-300 py-3">16:30-17:00</span>
+                                </label>
+                            </div>
+                            <div id="time-slot-loading" class="text-center text-gray-500 py-3 hidden">
+                                正在查询可用时间...
+                            </div>
+                        </div>
+
+                        <!-- 提交按钮 -->
+                        <button type="submit" id="submit-btn" class="btn-primary">
+                            提交预约
+                        </button>
+                    </form>
+                    <!-- 消息提示 -->
+                    <div id="message-box" class="p-3 rounded-lg text-center hidden"></div>
+                </div>
+            </div>
+
+            <!-- 查看页面 -->
+            <div id="page-view" class="hidden">
+                <div class="card space-y-4">
+                    <!-- 过滤器 -->
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <div class="flex-grow">
+                            <label for="filter-date" class="block text-lg font-medium text-gray-700 mb-1">按日期查看 (仅限周三)</label>
+                            <input type="text" id="filter-date" class="form-input bg-white" placeholder="选择日期筛选">
+                        </div>
+                        <div class="mt-auto">
+                            <button id="view-all-btn" class="btn-secondary w-full sm:w-auto h-[44px]">查看所有</button>
+                        </div>
+                    </div>
+
+                    <!-- 预约列表 -->
+                    <div id="loading-view" class="text-center text-gray-500 py-6">
+                        正在加载预约信息...
+                    </div>
+                    <div id="appointments-list" class="space-y-3">
+                        <!-- 预约项将在这里动态插入 -->
+                        <!-- 示例:
+                        <div class="appointment-item border-l-4 border-blue-500 bg-gray-50 p-4 rounded-r-md">
+                            <div class="flex justify-between items-center">
+                                <span class="name text-lg font-semibold text-gray-800">张三</span>
+                                <span class="text-sm font-medium text-blue-600">15:00-15:30</span>
+                            </div>
+                            <div class="details text-gray-600 mt-1">
+                                <span>13800138000</span> | <span>2025-11-19</span>
+                            </div>
+                        </div>
+                        <div class="appointment-item is-past border-l-4 p-4 rounded-r-md">
+                            ...
+                        </div>
+                        -->
+                    </div>
+                    <div id="empty-state" class="text-center text-gray-500 py-10 hidden">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">暂无预约</h3>
+                        <p class="mt-1 text-sm text-gray-500">当前筛选条件下没有找到预约记录。</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- Firebase 和 flatpickr 脚本 -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh.js"></script>
+
+    <!-- 导入 v9 compat 脚本 (新) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        // 移除了 v11 SDK "type=module" 导入
+        /*
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            query, 
+            where, 
+            getDocs, 
+            onSnapshot,
+            doc,
+            setLogLevel
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        */
+
+        // --------------------------------------------------
+        // 1. Firebase 配置和初始化
+        // --------------------------------------------------
+
+        // 使用你提供的 Firebase 配置
+        const userFirebaseConfig = {
+            apiKey: "AIzaSyCSdlJhcm9-X8G9ylC3QIUg1IC7IJ3urJ0",
+            authDomain: "ss-cxhj-f5e10.firebaseapp.com",
+            projectId: "ss-cxhj-f5e10",
+            storageBucket: "ss-cxhj-f5e10.firebasestorage.app",
+            messagingSenderId: "943812071913",
+            appId: "1:943812071913:web:95d80e3849ab09730dfb78",
+            measurementId: "G-2EEWHYF5YH"
+        };
+        
+        // 从环境中获取 Firebase 配置，如果不存在则使用你提供的配置
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : userFirebaseConfig;
+
+        // 从环境中获取 App ID
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // 初始化 Firebase (v9 compat 样式)
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        // 移除了 v11 modular 的 app, auth, 和 setLogLevel
+        // const app = initializeApp(firebaseConfig);
+        // const auth = getAuth(app);
+        // const db = getFirestore(app);
+        // setLogLevel('Debug'); 
+
+        // 定义 Firestore 集合路径
+        const collectionPath = `artifacts/${appId}/public/data/registrations`;
+        const registrationsCol = db.collection(collectionPath); // v9 样式
+
+        // let userId = null; // 移除了 auth
+        let globalRegistrations = []; // 存储所有预约
+        let unsubscribeFromRegistrations = null; // 用于取消实时监听
+
+        // --------------------------------------------------
+        // 2. DOM 元素引用
+        // --------------------------------------------------
+        const tabRegister = document.getElementById('tab-register');
+        const tabView = document.getElementById('tab-view');
+        const pageRegister = document.getElementById('page-register');
+        const pageView = document.getElementById('page-view');
+
+        // 登记表单
+        const registerForm = document.getElementById('register-form');
+        const nameInput = document.getElementById('name');
+        const phoneInput = document.getElementById('phone');
+        const registerDateInput = document.getElementById('register-date');
+        const timeSlotsContainer = document.getElementById('time-slots-container');
+        const timeSlotLoading = document.getElementById('time-slot-loading');
+        const submitBtn = document.getElementById('submit-btn');
+        const messageBox = document.getElementById('message-box');
+
+        // 查看页面
+        const filterDateInput = document.getElementById('filter-date');
+        const viewAllBtn = document.getElementById('view-all-btn');
+        const loadingView = document.getElementById('loading-view');
+        const appointmentsList = document.getElementById('appointments-list');
+        const emptyState = document.getElementById('empty-state');
+
+        // --------------------------------------------------
+        // 3. 辅助函数
+        // --------------------------------------------------
+
+        /**
+         * 显示提示消息
+         * @param {string} message 消息内容
+         * @param {boolean} isError 是否为错误消息
+         */
+        function showMessage(message, isError = false) {
+            messageBox.textContent = message;
+            messageBox.classList.remove('hidden', 'bg-green-100', 'text-green-700', 'bg-red-100', 'text-red-700');
+            if (isError) {
+                messageBox.classList.add('bg-red-100', 'text-red-700');
+            } else {
+                messageBox.classList.add('bg-green-100', 'text-green-700');
+            }
+            // 5秒后自动隐藏
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 5000);
+        }
+
+        /**
+         * "仅限周三" 的 flatpickr 配置
+         */
+        const wednesdayOnlyConfig = {
+            locale: "zh", // 使用中文
+            minDate: "today",
+            disable: [
+                function(date) {
+                    // 禁用所有非周三 (0=周日, 1=周一, ..., 3=周三)
+                    return date.getDay() !== 3;
+                }
+            ],
+            dateFormat: "Y-m-d", // YYYY-MM-DD 格式
+        };
+
+        // --------------------------------------------------
+        // 4. 核心逻辑 - 登记页面
+        // --------------------------------------------------
+
+        /**
+         * 根据所选日期更新可用的时间段
+         * @param {string} selectedDate - YYYY-MM-DD格式的日期
+         */
+        async function updateAvailableTimeSlots(selectedDate) {
+            if (!selectedDate) {
+                // 如果没有选择日期，重置所有时间段
+                timeSlotsContainer.querySelectorAll('input[type="radio"]').forEach(radio => {
+                    radio.disabled = false;
+                    const label = radio.nextElementSibling;
+                    label.textContent = radio.value;
+                });
+                return;
+            }
+
+            timeSlotLoading.classList.remove('hidden');
+            timeSlotsContainer.classList.add('hidden');
+            
+            try {
+                // 1. 查询 Firebase 中该日期的所有预约 (v9 style)
+                // const q = query(registrationsCol, where("date", "==", selectedDate)); // v11
+                // const querySnapshot = await getDocs(q); // v11
+                const q = registrationsCol.where("date", "==", selectedDate); // v9
+                const querySnapshot = await q.get(); // v9
+                
+                const bookedTimes = new Set();
+                querySnapshot.forEach(doc => {
+                    bookedTimes.add(doc.data().time);
+                });
+
+                // 2. 更新时间段单选框的状态
+                timeSlotsContainer.querySelectorAll('input[type="radio"]').forEach(radio => {
+                    const timeValue = radio.value;
+                    const label = radio.nextElementSibling;
+                    
+                    if (bookedTimes.has(timeValue)) {
+                        // 已被预约
+                        radio.disabled = true;
+                        radio.checked = false; // 取消选中
+                        label.textContent = `${timeValue} (已预约)`;
+                    } else {
+                        // 可以预约
+                        radio.disabled = false;
+                        label.textContent = timeValue;
+                    }
+                });
+
+            } catch (error) {
+                console.error("查询可用时间段失败: ", error);
+                showMessage("查询可用时间失败，请稍后重试", true);
+            } finally {
+                timeSlotLoading.classList.add('hidden');
+                timeSlotsContainer.classList.remove('hidden');
+            }
+        }
+
+        /**
+         * 处理登记表单提交
+         */
+        async function handleRegistrationSubmit(e) {
+            e.preventDefault();
+            /* 移除了 auth 检查
+            if (!userId) {
+                showMessage("尚未登录，请稍候...", true);
+                return;
+            }
+            */
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "提交中...";
+
+            const name = nameInput.value;
+            const phone = phoneInput.value;
+            const date = registerDateInput.value;
+            const timeRadio = timeSlotsContainer.querySelector('input[name="time"]:checked');
+
+            if (!timeRadio) {
+                showMessage("请选择一个预约时间段", true);
+                submitBtn.disabled = false;
+                submitBtn.textContent = "提交预约";
+                return;
+            }
+            const time = timeRadio.value;
+
+            try {
+                // **关键：再次检查该时间段是否刚被预约** (v9 style)
+                // const q = query(registrationsCol, where("date", "==", date), where("time", "==", time)); // v11
+                // const checkSnapshot = await getDocs(q); // v11
+                const q = registrationsCol.where("date", "==", date).where("time", "==", time); // v9
+                const checkSnapshot = await q.get(); // v9
+                
+                if (!checkSnapshot.empty) {
+                    // 在提交的瞬间被别人抢先了
+                    showMessage("手慢了！该时间段刚被预约，请刷新后重选", true);
+                    await updateAvailableTimeSlots(date); // 刷新时间段
+                } else {
+                    // 可以安全添加 (v9 style)
+                    // await addDoc(registrationsCol, { // v11
+                    await registrationsCol.add({ // v9
+                        name: name,
+                        phone: phone,
+                        date: date,
+                        time: time,
+                        createdAt: new Date(),
+                        // userId: userId // 移除了 auth
+                    });
+                    
+                    showMessage("预约成功！", false);
+                    registerForm.reset();
+                    // 重置日期选择器（如果需要）
+                    flatpickr(registerDateInput, wednesdayOnlyConfig); 
+                    // 清空时间段状态
+                    await updateAvailableTimeSlots(null);
+                }
+
+            } catch (error) {
+                console.error("预约失败: ", error);
+                showMessage(`预约失败: ${error.message}`, true);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "提交预约";
+            }
+        }
+
+        // --------------------------------------------------
+        // 5. 核心逻辑 - 查看页面
+        // --------------------------------------------------
+
+        /**
+         * 渲染预约列表
+         */
+        function renderRegistrations() {
+            const filterDate = filterDateInput.value;
+            let registrationsToDisplay = globalRegistrations;
+
+            // 1. 筛选
+            if (filterDate) {
+                registrationsToDisplay = globalRegistrations.filter(reg => reg.date === filterDate);
+            }
+
+            // 2. 排序 (未来在前，过去在后)
+            const now = new Date();
+            const futureAppointments = [];
+            const pastAppointments = [];
+
+            registrationsToDisplay.forEach(reg => {
+                // 使用时间段的结束时间来判断是否"过去"
+                const endTime = reg.time.split('-')[1]; // e.g., "15:30"
+                const apptDateTime = new Date(`${reg.date}T${endTime}:00`);
+                
+                if (apptDateTime < now) {
+                    pastAppointments.push(reg);
+                } else {
+                    futureAppointments.push(reg);
+                }
+            });
+
+            // 2a. 分别对未来和过去的预约按时间排序
+            const sortFn = (a, b) => {
+                const aTime = new Date(`${a.date}T${a.time.split('-')[0]}:00`);
+                const bTime = new Date(`${b.date}T${b.time.split('-')[0]}:00`);
+                return aTime - bTime;
+            };
+
+            futureAppointments.sort(sortFn);
+            pastAppointments.sort(sortFn);
+
+            // 2b. 合并列表
+            const sortedList = [...futureAppointments, ...pastAppointments];
+
+            // 3. 渲染
+            appointmentsList.innerHTML = ""; // 清空列表
+            loadingView.classList.add('hidden');
+
+            if (sortedList.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            sortedList.forEach(reg => {
+                // 检查是否为过去
+                const endTime = reg.time.split('-')[1];
+                const apptDateTime = new Date(`${reg.date}T${endTime}:00`);
+                const isPast = apptDateTime < now;
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `appointment-item border-l-4 p-4 rounded-r-md ${isPast ? 'is-past' : 'border-blue-500 bg-gray-50'}`;
+                
+                itemDiv.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="name text-lg font-semibold ${isPast ? 'text-gray-700' : 'text-gray-800'}">${reg.name}</span>
+                        <span class="text-sm font-medium ${isPast ? 'text-gray-500' : 'text-blue-600'}">${reg.time}</span>
+                    </div>
+                    <div class="details ${isPast ? 'text-gray-600' : 'text-gray-600'} mt-1 text-sm">
+                        <span>${reg.phone}</span> | <span>${reg.date}</span>
+                    </div>
+                `;
+                appointmentsList.appendChild(itemDiv);
+            });
+        }
+
+        /**
+         * 设置预约列表的实时监听
+         */
+        function setupRegistrationListener() {
+            // 如果已有监听，先取消
+            if (unsubscribeFromRegistrations) {
+                unsubscribeFromRegistrations();
+            }
+
+            // 开启新的实时监听 (v9 style)
+            // unsubscribeFromRegistrations = onSnapshot(registrationsCol, (querySnapshot) => { // v11
+            unsubscribeFromRegistrations = registrationsCol.onSnapshot((querySnapshot) => { // v9
+                globalRegistrations = [];
+                querySnapshot.forEach((doc) => {
+                    globalRegistrations.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // 收到新数据后，重新渲染列表
+                renderRegistrations();
+                
+            }, (error) => {
+                console.error("实时监听失败: ", error);
+                loadingView.textContent = "加载数据失败，请刷新页面。";
+            });
+        }
+
+
+        // --------------------------------------------------
+        // 6. 页面初始化和事件绑定
+        // --------------------------------------------------
+
+        /**
+         * 切换标签页
+         */
+        function switchTab(targetTab) {
+            if (targetTab === 'register') {
+                pageRegister.classList.remove('hidden');
+                pageView.classList.add('hidden');
+                tabRegister.classList.add('tab-active');
+                tabView.classList.remove('tab-active');
+            } else {
+                pageRegister.classList.add('hidden');
+                pageView.classList.remove('hidden');
+                tabRegister.classList.remove('tab-active');
+                tabView.classList.add('tab-active');
+                // 切换到查看时，确保数据已加载
+                renderRegistrations();
+            }
+        }
+
+        /**
+         * Firebase 认证 (已移除)
+         */
+        /*
+        async function initializeAuth() {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    console.log("认证成功, User ID:", user.uid);
+                    userId = user.uid;
+                    // 认证成功后，才开始监听数据
+                    setupRegistrationListener();
+                } else {
+                    console.log("用户未登录");
+                    userId = null;
+                    if (unsubscribeFromRegistrations) {
+                        unsubscribeFromRegistrations();
+                    }
+                }
+            });
+
+            try {
+                // 检查 __initial_auth_token 是否存在
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    console.log("使用 Custom Token 登录...");
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    console.log("使用匿名方式登录...");
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Firebase 登录失败:", error);
+                document.body.innerHTML = `<div class="text-center p-10 text-red-600">Firebase认证失败，应用无法启动。</div>`;
+            }
+        }
+        */
+
+        // --------------------------------------------------
+        // 7. 启动应用
+        // --------------------------------------------------
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. 初始化 Firebase 认证 (移除)
+            // initializeAuth();
+            
+            // 1. (新) 直接开始监听数据
+            setupRegistrationListener();
+
+            // 2. 初始化日期选择器
+            const registerPicker = flatpickr(registerDateInput, {
+                ...wednesdayOnlyConfig,
+                onChange: function(selectedDates, dateStr, instance) {
+                    // 当日期变化时，更新可用时间段
+                    updateAvailableTimeSlots(dateStr);
+                }
+            });
+            
+            const filterPicker = flatpickr(filterDateInput, {
+                ...wednesdayOnlyConfig,
+                onChange: function(selectedDates, dateStr, instance) {
+                    // 当筛选日期变化时，重新渲染列表
+                    renderRegistrations();
+                }
+            });
+
+            // 3. 绑定标签页切换事件
+            tabRegister.addEventListener('click', () => switchTab('register'));
+            tabView.addEventListener('click', () => switchTab('view'));
+
+            // 4. 绑定表单提交事件
+            registerForm.addEventListener('submit', handleRegistrationSubmit);
+
+            // 5. 绑定查看全部按钮事件
+            viewAllBtn.addEventListener('click', () => {
+                filterPicker.clear(); // 清空日期选择器
+                renderRegistrations(); // 重新渲染（无筛选）
+            });
+        });
+
+    </script>
+</body>
+</html>
