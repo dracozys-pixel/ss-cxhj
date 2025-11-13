@@ -328,8 +328,8 @@
             ? JSON.parse(__firebase_config) 
             : userFirebaseConfig;
 
-        // 从环境中获取 App ID
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // 从环境中获取 App ID (移除)
+        // const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         // 初始化 Firebase (v9 compat 样式)
         firebase.initializeApp(firebaseConfig);
@@ -340,9 +340,9 @@
         // const db = getFirestore(app);
         // setLogLevel('Debug'); 
 
-        // 定义 Firestore 集合路径
-        const collectionPath = `artifacts/${appId}/public/data/registrations`;
-        const registrationsCol = db.collection(collectionPath); // v9 样式
+        // 定义 Firestore 集合路径 (!! 关键修复 !!)
+        // const collectionPath = `artifacts/${appId}/public/data/registrations`; // 移除
+        const registrationsCol = db.collection("registrations"); // v9 样式, 匹配 index.txt
 
         // let userId = null; // 移除了 auth
         let globalRegistrations = []; // 存储所有预约
